@@ -9,17 +9,17 @@ namespace CrudWebApiDapper.Controllers
     [ApiController]
     public class SuperHeroController : ControllerBase
     {
-        private readonly IConfiguration _config;
+        private readonly string _config;
 
         public SuperHeroController(IConfiguration config)
         {
-            _config = config;
+            _config = config.GetConnectionString("DefaultConnection");
         }
 
         [HttpGet]
         public async Task<ActionResult<List<SuperHero>>> GetAllSuperHeroes()
         {
-            using var connection = new SqlConnection(_config.GetConnectionString("DefaultConnection"));
+            using var connection = new SqlConnection(_config); //Pode usar as chaves { }
             IEnumerable<SuperHero> heroes = await SelectAllHeroes(connection);
             return Ok(heroes);
         }
@@ -27,23 +27,25 @@ namespace CrudWebApiDapper.Controllers
         [HttpGet("{heroId}")]
         public async Task<ActionResult<SuperHero>> GetHero(int heroId)
         {
-            using var connection = new SqlConnection(_config.GetConnectionString("DefaultConnection"));
-            var hero = await connection.QueryFirstAsync<SuperHero>("SELECT * FROM superheroes WHERE id = @Id", new { Id = heroId });
+            using var connection = new SqlConnection(_config);
+            var hero = await connection.QueryFirstOrDefaultAsync<SuperHero>("SELECT * FROM superheroes WHERE id = @Id", new { Id = heroId });
+            if (hero is null)
+                return NotFound();
             return Ok(hero);
         }
 
         [HttpPost]
         public async Task<ActionResult<List<SuperHero>>> CreateHero(SuperHero hero)
         {
-            using var connection = new SqlConnection(_config.GetConnectionString("DefaultConnection"));
-            await connection.ExecuteAsync("INSERT INTO superheroes (name, firstname, lastname, place) VALUES (@Name, @FirstName, @LastName, @Place)", hero);
+            using var connection = new SqlConnection(_config);
+            await connection.ExecuteAsync("INSERT INTO superheroes (name, firstname, lastname, place) VALUES (@Name, @FirstName, @LastName, @Place)", hero); //Pode ser passado campo a campo 
             return Ok(await SelectAllHeroes(connection));
         }
 
         [HttpPut]
         public async Task<ActionResult<List<SuperHero>>> UpdateHero(SuperHero hero)
         {
-            using var connection = new SqlConnection(_config.GetConnectionString("DefaultConnection"));
+            using var connection = new SqlConnection(_config);
             await connection.ExecuteAsync("UPDATE superheroes SET name = @Name, firstname = @FirstName, lastname = @LastName, place = @Place WHERE id = @Id", hero);
             return Ok(await SelectAllHeroes(connection));
         }
@@ -51,7 +53,7 @@ namespace CrudWebApiDapper.Controllers
         [HttpDelete("{heroId}")]
         public async Task<ActionResult<List<SuperHero>>> DeleteHero(int heroId)
         {
-            using var connection = new SqlConnection(_config.GetConnectionString("DefaultConnection"));
+            using var connection = new SqlConnection(_config);
             await connection.ExecuteAsync("DELETE FROM superheroes WHERE id = @Id", new { Id = heroId });
             return Ok(await SelectAllHeroes(connection));
         }
